@@ -1,3 +1,9 @@
+volumes:
+  mongo:
+    driver: local
+  geoserver_data:  # Volume per mantenere i dati di GeoServer
+  postgis_data:
+
 services:
   mongo:
     image: mongo:4
@@ -6,7 +12,14 @@ services:
     ports:
       - 27027:27017
     volumes:
-      - './mongo_data:/data/db'
+      - mongo:/data/db
+  orion:
+    image: fiware/orion-ld
+    links:
+      - mongo
+    ports:
+      - "1026:1026"
+    command: -dbhost mongo
 
   geodata-be:
     image: geodata-be:main
@@ -15,13 +28,43 @@ services:
       context: .
     depends_on:
       - mongo
+      - geoserver
+      - postgis
     restart: always
     ports:
       - '9090:9090'
     environment:
       - SERVER_PORT=9090
       - SERVER_URL=http://localhost
-      - HOST_ORION=http://172.16.10.173:1026
+      - HOST_ORION=http://orion:1026
       - HOST_NGSIBROKER=https://ngsi-broker.dev.ecosystem-urbanage.eu
       - MONGODB_URL=mongodb://mongo
       - PLATFORM=dev #prod
+      - GEOSERVER_URL=http://geoserver:8080/geoserver  
+      - POSTGRES_URL=jdbc:postgresql://postgis:5432/ProvaPostGIS
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+  geoserver:
+    image: kartoza/geoserver:latest
+    container_name: geoserver
+    ports:
+      - "8080:8080"  # Usa una porta diversa per evitare conflitti con il backend
+    environment:
+      - GEOSERVER_ADMIN_USER=admin
+      - GEOSERVER_ADMIN_PASSWORD=geoserver
+      - GEOSERVER_DATA_DIR=/var/local/geoserver
+    volumes:
+      - geoserver_data:/var/local/geoserver
+
+  postgis:
+    image: postgis/postgis:15-3.3
+    container_name: postgis
+    restart: always
+    environment:
+      POSTGRES_DB: ProvaPostGIS
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgis_data:/var/lib/postgresql/data

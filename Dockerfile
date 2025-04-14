@@ -11,12 +11,8 @@ COPY pom.xml .
 
 COPY src src
 
-
-
-
-RUN /bin/sh mvnw -f /workspace/app/pom.xml install
+RUN /bin/sh mvnw -f /workspace/app/pom.xml install -DskipTests
 RUN mkdir -p target/dependency && (cd target/dependency; jar -xf ../*.jar)
-
 FROM openjdk:17-jdk-alpine
 VOLUME /tmp
 ARG DEPENDENCY=/workspace/app/target/dependency
