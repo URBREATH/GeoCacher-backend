@@ -1,11 +1,7 @@
 package eu.urbanage.GeoDataExtractor.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import eu.urbanage.GeoDataExtractor.entity.GeoFeature;
-import eu.urbanage.GeoDataExtractor.repository.GeoFeatureRepository;
 import eu.urbanage.GeoDataExtractor.utils.GeoServerQueryBuilder;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import org.locationtech.jts.geom.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,13 +19,7 @@ public class GeoServerService {
     @Value("${geoserver.url}")
     private String geoServerUrl;
 
-    @Autowired
-    private GeoFeatureRepository repository;
-
     private final GeometryFactory geometryFactory = new GeometryFactory();
-
-    @PersistenceContext
-    private EntityManager entityManager;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -158,38 +148,6 @@ public class GeoServerService {
         }
     }
 
-
-    public void saveGeoJson(String geoJson) {
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            JsonNode root = mapper.readTree(geoJson);
-            JsonNode features = root.get("features");
-
-            for (JsonNode feature : features) {
-                JsonNode geometryNode = feature.get("geometry");
-                JsonNode coords = geometryNode.get("coordinates");
-                String type = geometryNode.get("type").asText();
-
-                if (coords == null || coords.isNull()) {
-                    throw new IllegalArgumentException("Coordinate mancanti nel GeoJSON");
-                }
-
-                Geometry geom = parseGeometry(type, coords);
-                String properties = mapper.writeValueAsString(feature.get("properties"));
-
-                GeoFeature entity = new GeoFeature();
-                entity.setGeometry(geom);
-                entity.setProperties(properties);
-                geom.setSRID(4326);  // Imposta WGS84
-
-                repository.save(entity);
-            }
-
-        } catch (Exception e) {
-            throw new RuntimeException("Errore parsing GeoJSON: " + e.getMessage(), e);
-        }
-    }
-
     private Geometry parseGeometry(String type, JsonNode coords) {
         switch (type) {
             case "Point":
@@ -256,7 +214,7 @@ public class GeoServerService {
         }
     }
 
-    public void saveGeoJson2(String geoJson, String tableName) {
+    public void saveGeoJson(String geoJson, String tableName) {
         try {
             // Sanitize table name (basic)
             if (!tableName.matches("[a-zA-Z0-9_]+")) {

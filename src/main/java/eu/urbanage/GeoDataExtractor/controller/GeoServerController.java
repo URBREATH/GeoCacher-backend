@@ -24,23 +24,11 @@ public class GeoServerController {
         return ResponseEntity.ok(geojson);
     }
 
-
     @PostMapping("/save")
-    public ResponseEntity<?> saveGeoJsonToPostGIS(@RequestBody String geoJson) {
-        try {
-            geoServerService.saveGeoJson(geoJson);
-            return ResponseEntity.ok("GeoJSON salvato nel database PostGIS.");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                   .body("Errore durante il salvataggio: " + e.getMessage());
-        }
-    }
-
-    @PostMapping("/save2")
     public ResponseEntity<?> saveGeoJsonToPostGIS(@RequestParam String tableName,
                                                 @RequestBody String geoJson) {
         try {
-            geoServerService.saveGeoJson2(geoJson, tableName);
+            geoServerService.saveGeoJson(geoJson, tableName);
             return ResponseEntity.ok("GeoJSON saved to PostGIS in table: " + tableName);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -69,7 +57,7 @@ public class GeoServerController {
                                                    @RequestParam String layer,
                                                    @RequestBody String geoJson) {
         try {
-            geoServerService.saveGeoJson(geoJson);
+            geoServerService.saveGeoJson(geoJson, layer);
             geoServerService.publishToGeoServer(workspace,datastore,layer);
             return ResponseEntity.ok("Salvataggio su PostGIS e pubblicazione su GeoServer completati.");
         } catch (Exception e) {
@@ -113,7 +101,6 @@ public class GeoServerController {
                     .body("Errore nella creazione del workspace: " + e.getMessage());
         }
     }
-
     
 }
 
