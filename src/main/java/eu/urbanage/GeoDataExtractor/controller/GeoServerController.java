@@ -3,9 +3,12 @@ package eu.urbanage.GeoDataExtractor.controller;
 
 import eu.urbanage.GeoDataExtractor.service.GeoServerService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.fasterxml.jackson.databind.JsonNode;
+
+
+
 
 
 @CrossOrigin(origins = { "https://geodata-extractor-ui.dev.ecosystem-urbanage.eu",
@@ -18,52 +21,85 @@ public class GeoServerController {
     @Autowired
     private GeoServerService geoServerService;
 
-    @GetMapping("/getLayer")
-    public ResponseEntity<String> getLayer(@RequestParam String layerName)    {
-        String geojson = geoServerService.getLayerGeoJSON(layerName);
+    @GetMapping("/layers/{workspace}/{layerName}")
+    public ResponseEntity<String> getLayer(@PathVariable String workspace, @PathVariable String layerName)    {
+        String geojson = geoServerService.getLayerGeoJSON(workspace,layerName);
         return ResponseEntity.ok(geojson);
     }
 
-    @PostMapping("/save")
-    public ResponseEntity<?> saveGeoJsonToPostGIS(@RequestParam String tableName,
-                                                @RequestBody String geoJson) {
-        try {
-            geoServerService.saveGeoJson(geoJson, tableName);
-            return ResponseEntity.ok("GeoJSON saved to PostGIS in table: " + tableName);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Error while saving: " + e.getMessage());
-        }
+    @GetMapping("/layers")
+    public ResponseEntity<String> getAllLayers(@RequestParam String workspace,
+                                @RequestParam String datastore) {
+
+        String layersJson = geoServerService.getLayers(workspace, datastore);
+        return ResponseEntity.ok(layersJson);
     }
+    
 
-    @PostMapping("/publish")
-    public ResponseEntity<?> publishExistingLayerToGeoServer(
-            @RequestParam String workspace,
-            @RequestParam String datastore,
-            @RequestParam String layerName) {
-        try {
-            geoServerService.publishToGeoServer(workspace, datastore, layerName);
-            return ResponseEntity.ok("Layer pubblicato su GeoServer.");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Errore nella pubblicazione su GeoServer: " + e.getMessage());
-        }
-    }
-
-
-    @PostMapping("/upload")
+    @PostMapping("/layers")
     public ResponseEntity<?> uploadAndPublish(@RequestParam String workspace,
                                                    @RequestParam String datastore,
-                                                   @RequestParam String layer,
-                                                   @RequestBody String geoJson) {
-        try {
-            geoServerService.saveGeoJson(geoJson, layer);
-            geoServerService.publishToGeoServer(workspace,datastore,layer);
-            return ResponseEntity.ok("Salvataggio su PostGIS e pubblicazione su GeoServer completati.");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Errore: " + e.getMessage());
-        }
+                                                   @RequestParam String layer) {
+                                                    
+        geoServerService.createTable(layer);
+        geoServerService.publishToGeoServer(workspace,datastore,layer);
+        return ResponseEntity.ok("Layer saved on PostGIS and published on Geoserver.");
+    }
+
+    @DeleteMapping("/layers/{layerName}") 
+    public ResponseEntity<?> deleteLayer(@PathVariable String layerName, 
+                                        @RequestParam String workspace, 
+                                        @RequestParam String datastore){
+            
+        geoServerService.deleteLayer(workspace, datastore, layerName);
+        return ResponseEntity.ok("Layer '" + layerName + "' deleted successfully.");
+    }
+
+    @PostMapping("/features")
+    public ResponseEntity<?> saveGeoJsonToPostGIS(@RequestParam String layer,
+                                                @RequestBody String geoJson) {
+        geoServerService.saveGeoJson(geoJson, layer);
+        return ResponseEntity.ok("GeoJSON saved to PostGIS in table: " + layer);
+    }
+
+    @GetMapping("/features/{id}")
+    public ResponseEntity<String> getFeatureById(@PathVariable int id , @RequestParam String workspace, @RequestParam String layerName) {
+        String feature = geoServerService.getFeatureById(id, workspace, layerName);
+        return ResponseEntity.ok(feature);
+    } 
+
+    @PutMapping("/features/{id}")
+    public ResponseEntity<String> updateFeature(
+            @PathVariable int id,
+            @RequestParam String layerName,
+            @RequestBody JsonNode featureBody) {
+
+        geoServerService.updateFeature(layerName, id, featureBody);
+        return ResponseEntity.ok("Feature updated");
+        
+    }
+
+    @DeleteMapping("/features/{id}")
+    public ResponseEntity<String> deleteFeatureById(
+            @PathVariable int id,
+            @RequestParam String layerName) {
+    
+        geoServerService.deleteFeatureById(layerName, id);
+        return ResponseEntity.ok("Feature with id " + id + " deleted from table " + layerName);
+    }
+
+    @DeleteMapping("/features")
+    public ResponseEntity<String> deleteAllFeatures(@RequestParam String layerName) {
+
+        geoServerService.deleteAllFeatures(layerName);
+        return ResponseEntity.ok("All features deleted from table " + layerName);
+    }
+
+    @PostMapping("/workspaces")
+    public ResponseEntity<String> createWorkspace(@RequestParam String workspace) {
+
+        geoServerService.createWorkspace(workspace);
+        return ResponseEntity.ok("Workspace created: " + workspace);
     }
 
     @GetMapping("/workspaces")
@@ -72,35 +108,39 @@ public class GeoServerController {
         return ResponseEntity.ok(workspaces);
     }
 
+    @DeleteMapping("/workspaces/{workspaceName}")
+    public ResponseEntity<String> deleteWorkspace(@PathVariable String workspaceName) {
+
+        geoServerService.deleteWorkspace(workspaceName);
+        return ResponseEntity.ok("Workspace deleted: " + workspaceName);
+    }
+
+    @PostMapping("/datastores")
+    public ResponseEntity<?> createDatastore(
+            @RequestParam String workspace,
+            @RequestParam String datastore) {
+
+        geoServerService.createPostGISDatastore(workspace, datastore);
+        return ResponseEntity.ok("Datastore created: " + datastore);
+    }
+
     @GetMapping("/datastores")
     public ResponseEntity<String> getGeoServerDatastores(@RequestParam String workspace) {
         String datastores = geoServerService.getDatastores(workspace);
         return ResponseEntity.ok(datastores);
     }
 
-    @PostMapping("/datastore")
-    public ResponseEntity<?> createDatastore(
-            @RequestParam String workspace,
-            @RequestParam String datastore) {
-        try {
-            geoServerService.createPostGISDatastore(workspace, datastore);
-            return ResponseEntity.ok("Datastore creato correttamente su GeoServer.");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Errore creazione datastore: " + e.getMessage());
-        }
+    @DeleteMapping("/datastores/{datastoreName}")
+    public ResponseEntity<String> deleteDatastore(
+            @PathVariable String datastoreName,
+            @RequestParam String workspace) {
+
+        geoServerService.deleteDatastore(workspace, datastoreName);
+        return ResponseEntity.ok("Datastore deleted: " + datastoreName);
     }
 
-    @PostMapping("/workspace")
-    public ResponseEntity<String> createWorkspace(@RequestParam String workspace) {
-        try {
-            geoServerService.createWorkspace(workspace);
-            return ResponseEntity.ok("Workspace creato con successo: " + workspace);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Errore nella creazione del workspace: " + e.getMessage());
-        }
-    }
+
+    
     
 }
 

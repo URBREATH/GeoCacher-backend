@@ -1,13 +1,20 @@
 package eu.urbanage.GeoDataExtractor.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import eu.urbanage.GeoDataExtractor.exception.*;
 import eu.urbanage.GeoDataExtractor.utils.GeoServerQueryBuilder;
+import eu.urbanage.GeoDataExtractor.utils.InputValidator;
+import eu.urbanage.GeoDataExtractor.utils.ParsingGeoJson;
 import org.locationtech.jts.geom.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -18,9 +25,6 @@ public class GeoServerService {
 
     @Value("${geoserver.url}")
     private String geoServerUrl;
-
-    private final GeometryFactory geometryFactory = new GeometryFactory();
-
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
@@ -28,68 +32,81 @@ public class GeoServerService {
 
     RestTemplate restTemplate=new RestTemplate();
 
-    public String getWorkspaces() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBasicAuth("admin", "geoserver");        
-        
-        HttpEntity<String> entity = new HttpEntity<>(headers);
 
-        ResponseEntity<String> response = restTemplate.exchange(
-            geoServerUrl+"/rest/workspaces",
-            HttpMethod.GET,
-            entity,
-            String.class
-        );
-
-        return response.getBody();
-    }
-
-    public String getDatastores(String workspace) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBasicAuth("admin", "geoserver");        
-        
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-
-        ResponseEntity<String> response = restTemplate.exchange(
-            geoServerUrl+"/rest/workspaces/"+workspace+"/datastores",
-            HttpMethod.GET,
-            entity,
-            String.class
-        );
-
-        return response.getBody();
-    }
-
-    public void createWorkspace(String workspaceName) {
+    public void createWorkspace(String workspace) {
+        InputValidator.validateWorkspace(workspace);
         String url = geoServerUrl + "/rest/workspaces";
     
         String xmlPayload = """
             <workspace>
                 <name>%s</name>
             </workspace>
-            """.formatted(workspaceName);
+            """.formatted(workspace);
     
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_XML);
         headers.setBasicAuth("admin", "geoserver"); // o usa configurazione
     
         HttpEntity<String> request = new HttpEntity<>(xmlPayload, headers);
+        
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
     
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
-    
-        if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new RuntimeException("Errore creazione workspace: " + response.getBody());
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new WorkspaceOperationException(workspace,response.getBody());
+            }
+        } catch (HttpClientErrorException.Conflict e) {
+        throw new LayerConflictException("Workspace '" + workspace + "' already exists.");
+        } catch (RestClientException e) {
+            throw new GeoServerRequestException("Error creating workspace '" + workspace + "'", e);
         }
-    }    
+        
+    }  
 
-    public void createPostGISDatastore(String workspace, String datastoreName) {
+    public String getWorkspaces() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBasicAuth("admin", "geoserver");        
+        
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+        
+        try {
+    
+            ResponseEntity<String> response = restTemplate.exchange(
+                geoServerUrl+"/rest/workspaces",
+                HttpMethod.GET,
+                entity,
+                String.class);
+
+            return response.getBody();
+        } catch (RestClientException e) {
+            throw new GeoServerRequestException("Failed to retrieve workspaces from Geoserver",e);
+        }
+    }
+    
+    public void deleteWorkspace(String workspace) {
+        InputValidator.validateWorkspace(workspace);
+        String url = geoServerUrl + "/rest/workspaces/" + workspace + "?recurse=true";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBasicAuth("admin", "geoserver");
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+        try {
+        restTemplate.exchange(url, HttpMethod.DELETE, request, String.class);
+        } catch (RestClientException e) {
+            throw new WorkspaceOperationException(workspace, "Failed to delete workspace: " + e.getMessage());
+        }
+    }
+
+    public void createPostGISDatastore(String workspace, String datastore) {
+        InputValidator.validateWorkspace(workspace);
+        InputValidator.validateDatastore(datastore);
+
         String url = geoServerUrl + "/rest/workspaces/" + workspace + "/datastores";
     
         String payload = """
             {
               "dataStore": {
                 "name": "%s",
-                "description": "Datastore PostGIS creato via API",
+                "description": "Datastore PostGIS",
                 "type": "PostGIS",
                 "enabled": true,
                 "connectionParameters": {
@@ -109,76 +126,102 @@ public class GeoServerService {
                 }
               }
             }
-            """.formatted(datastoreName);
+            """.formatted(datastore);
     
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBasicAuth("admin", "geoserver");
     
         HttpEntity<String> request = new HttpEntity<>(payload, headers);
-    
-        ResponseEntity<String> response = restTemplate.exchange(
-            url,
-            HttpMethod.POST,
-            request,
-            String.class
-        );
-    
-        if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new RuntimeException("Errore creazione datastore: " + response.getStatusCode() + " - " + response.getBody());
+        try{
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new DatastoreOperationException(datastore, response.getBody());
+            }
+        } catch (RestClientException e) {
+            throw new GeoServerRequestException("Failed to create datastore '" + datastore + "' in" + workspace + "'",e);
         }
+    }
+
+    public String getDatastores(String workspace) {
+        InputValidator.validateWorkspace(workspace);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBasicAuth("admin", "geoserver");        
+        
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+            geoServerUrl+"/rest/workspaces/"+workspace+"/datastores", HttpMethod.GET, entity, String.class);
+
+            return response.getBody();
+        } catch (RestClientException e) {
+            throw new GeoServerRequestException("Failed to retrieve datastores for workspace '" + workspace + "'", e);
+        }
+        
+    }
+    
+    public void deleteDatastore(String workspace, String datastore) {
+        InputValidator.validateWorkspace(workspace);
+        InputValidator.validateDatastore(datastore);
+        String url = geoServerUrl + "/rest/workspaces/" + workspace + "/datastores/" + datastore + "?recurse=true";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBasicAuth("admin", "geoserver");
+        try {
+            HttpEntity<Void> request = new HttpEntity<>(headers);
+            restTemplate.exchange(url, HttpMethod.DELETE, request, String.class);
+        } catch (RestClientException e){
+            throw new DatastoreOperationException(datastore, "Failed to delete datastore from GeoServer: " + e.getMessage());
+        }
+        
     }
     
 
-    public String getLayerGeoJSON(String layerName) {
+    public String getLayerGeoJSON(String workspace, String layerName) {
+        InputValidator.validateWorkspace(workspace);
+        InputValidator.validateLayerName(layerName);
+
         String url = new GeoServerQueryBuilder(geoServerUrl)
                 .setGetFeatureRequest()
-                .setTypeName(layerName)
+                .setTypeName(workspace + ":" + layerName)
                 .setOutputFormat("application/json")
                 .build();
 
         try {
-            System.out.println("Chiamata a GeoServer: " + url);
             ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
             return response.getBody();
-        } catch (Exception e) {
-            System.err.println("Errore nella richiesta a GeoServer:");
-            e.printStackTrace(); // oppure usa un logger
-            return "{ \"error\": \"" + e.getMessage() + "\" }";
+        } catch (RestClientException e) {
+            throw new GeoServerRequestException("Error in WFS request for layer: " + layerName, e);
         }
     }
 
-    private Geometry parseGeometry(String type, JsonNode coords) {
-        switch (type) {
-            case "Point":
-                return geometryFactory.createPoint(parseCoordinate(coords));
-            case "Polygon":
-                return geometryFactory.createPolygon(parseCoordinates(coords.get(0)));
-            case "MultiPolygon":
-                Polygon[] polygons = new Polygon[coords.size()];
-                for (int i = 0; i < coords.size(); i++) {
-                    polygons[i] = geometryFactory.createPolygon(parseCoordinates(coords.get(i).get(0)));
-                }
-                return geometryFactory.createMultiPolygon(polygons);
-            default:
-                throw new UnsupportedOperationException("Tipo non supportato: " + type);
-        }
-    }
+    public String getLayers(String workspace, String datastore) {
+        InputValidator.validateWorkspace(workspace);
+        InputValidator.validateDatastore(datastore);
+        String url= geoServerUrl + "/rest/workspaces/" + workspace + 
+                    "/datastores/" + datastore + "/featuretypes.json";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(MediaType.parseMediaTypes("application/json"));
+        headers.setBasicAuth("admin", "geoserver");   //capire come gestire le autorizzazioni
 
-    private Coordinate parseCoordinate(JsonNode coord) {
-        // Es: [12.4924, 41.8902] => Coordinate(x=12.4924, y=41.8902)
-        return new Coordinate(coord.get(0).asDouble(), coord.get(1).asDouble());
-    }
+        HttpEntity<Void> request = new HttpEntity<>(headers);
 
-    private Coordinate[] parseCoordinates(JsonNode array) {
-        Coordinate[] coords = new Coordinate[array.size()];
-        for (int i = 0; i < array.size(); i++) {
-            coords[i] = parseCoordinate(array.get(i));
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
+
+            return response.getBody();
+        } catch (RestClientException e) {
+            throw new GeoServerRequestException("Unable to retrieve layers for workspace '" + workspace + "', datastore '" + datastore + "'", e);
         }
-        return coords;
+        
+
     }
 
     public void publishToGeoServer(String workspace, String datastore, String layerName) {
+        InputValidator.validateWorkspace(workspace);
+        InputValidator.validateDatastore(datastore);
+        InputValidator.validateLayerName(layerName);
+
         String url = geoServerUrl + "/rest/workspaces/" + workspace +
                 "/datastores/" + datastore + "/featuretypes";
 
@@ -197,69 +240,200 @@ public class GeoServerService {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_XML);
-        headers.setBasicAuth("admin", "geoserver");
+        headers.setBasicAuth("admin", "geoserver");   //capire come gestire le autorizzazioni
 
         HttpEntity<String> request = new HttpEntity<>(payload, headers);
         try {
             ResponseEntity<String> response = new RestTemplate().postForEntity(url, request, String.class);
-    
+        
             if (!response.getStatusCode().is2xxSuccessful()) {
-                System.err.println(">>> GEO ERROR: " + response.getStatusCode());
-                System.err.println(">>> GEO BODY: " + response.getBody());
-                throw new RuntimeException("Errore nella pubblicazione su GeoServer: " + response.getBody());
+                throw new LayerNotPublishedException(layerName + ": " + response.getBody());
             }
-        } catch (Exception e) {
-            System.err.println(">>> EXCEPTION GEO: " + e.getMessage());
-            throw new RuntimeException("Errore nella pubblicazione su GeoServer (eccezione): " + e.getMessage(), e);
+        } catch (RestClientException e) {
+            throw new GeoServerRequestException("Failed to publish layer '" + layerName + "' to Geoserver", e);
         }
+        
     }
 
     public void saveGeoJson(String geoJson, String tableName) {
+        InputValidator.validateLayerName(tableName);
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root;
         try {
-            // Sanitize table name (basic)
-            if (!tableName.matches("[a-zA-Z0-9_]+")) {
-                throw new IllegalArgumentException("Invalid table name: " + tableName);
-            }
-    
-            // Step 1 – Create table if not exists
-            String createTableSQL = """
-                CREATE TABLE IF NOT EXISTS %s (
-                    id SERIAL PRIMARY KEY,
-                    geometry geometry(Geometry,4326),
-                    properties TEXT
-                );
-                """.formatted(tableName);
-            jdbcTemplate.execute(createTableSQL);
-    
-            // Step 2 – Parse GeoJSON
-            ObjectMapper mapper = new ObjectMapper();
-            JsonNode root = mapper.readTree(geoJson);
-            JsonNode features = root.get("features");
-    
-            for (JsonNode feature : features) {
+            root = mapper.readTree(geoJson);
+        } catch (JsonProcessingException e) {
+            throw new GeoJsonFormatException("Malformed GeoJSON: " + e.getMessage());
+        }
+        JsonNode features = root.get("features");
+        if (features == null || !features.isArray()) {  //OCCHIO QUA CONTROLLA SE VA BENE QUESTA CONDIZIONE
+            throw new GeoJsonFormatException("Missing or invalid 'features' array in GeoJSON");
+        }
+            
+        ParsingGeoJson parser = new ParsingGeoJson();
+
+        for (JsonNode feature : features) {
+            try {
                 JsonNode geometryNode = feature.get("geometry");
+                if (geometryNode ==null)  {
+                    throw new GeoJsonFormatException("Missing geometry in feature");
+                }
                 JsonNode coords = geometryNode.get("coordinates");
                 String type = geometryNode.get("type").asText();
     
-                if (coords == null || coords.isNull()) {
-                    throw new IllegalArgumentException("Missing coordinates in GeoJSON");
-                }
-    
-                Geometry geom = parseGeometry(type, coords);
+                
+                Geometry geom = parser.parseGeometry(type, coords);
                 geom.setSRID(4326);
+
                 String properties = mapper.writeValueAsString(feature.get("properties"));
     
-                // Step 3 – Insert data
                 String insertSQL = "INSERT INTO " + tableName + " (geometry, properties) VALUES (ST_GeomFromText(?, 4326), ?)";
                 jdbcTemplate.update(insertSQL, geom.toText(), properties);
-
-
+            } catch (UnsupportedGeometryTypeException e) {
+            throw e; // già custom
+            } catch (JsonProcessingException e) {
+                throw new GeoJsonFormatException("Invalid properties format: " + e.getMessage());
+            } catch (DataAccessException e) {
+                throw new FeatureUpdateException("Failed DB insert into table " + tableName + ": " + e.getMessage());
+            } catch (Exception e) {
+                throw new FeatureUpdateException("Unexpected error while processing feature: " + e.getMessage());
             }
-    
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to process GeoJSON: " + e.getMessage(), e);
         }
     }
-    
+
+    public String getFeatureById(int id, String workspace, String layerName) {
+        InputValidator.validateWorkspace(workspace);
+        InputValidator.validateLayerName(layerName);
+        String url= new GeoServerQueryBuilder(geoServerUrl)
+                    .setGetFeatureRequest()
+                    .setTypeName(workspace+":"+layerName)
+                    .setOutputFormat("application/json")
+                    .setCqlFilter("id="+id)
+                    .setCount(1)
+                    .build();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBasicAuth("admin", "geoserver");
+        headers.setAccept(MediaType.parseMediaTypes("application/json"));
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+
+            String body = response.getBody();
+
+            if (body == null || body.contains("\"totalFeatures\" : 0") || body.contains("\"features\": []")) {
+                throw new FeatureNotFoundException(id, layerName);
+            }
+
+            return body;
+        } catch (RestClientException e) {
+            throw new GeoServerRequestException("Error retrieving feature with id " + id + " from layer '" + layerName + "'", e);
+        }
+        
+    }
+
+    public void updateFeature(String layerName, int id, JsonNode featureJson) {
+        InputValidator.validateLayerName(layerName);
+
+        JsonNode geometryNode = featureJson.get("geometry");
+        if (geometryNode == null) {
+            throw new GeoJsonFormatException("Missing geometry field in features");
+        }
+
+        try {
+            
+            JsonNode propertiesNode = featureJson.get("properties");
+            ParsingGeoJson parser= new ParsingGeoJson();
+            Geometry geometry = parser.parseGeometry(
+                    geometryNode.get("type").asText(),
+                    geometryNode.get("coordinates")
+            );
+            geometry.setSRID(4326);
+
+            String propertiesJson = new ObjectMapper().writeValueAsString(propertiesNode);
+
+            String sql = "UPDATE " + layerName + " SET geometry = ST_GeomFromText(?, 4326), properties = ? WHERE id = ?";
+            int updated = jdbcTemplate.update(sql, geometry.toText(), propertiesJson, id);
+
+            if (updated == 0) {
+                throw new FeatureNotFoundException(id, layerName);
+            }
+
+        } catch (UnsupportedGeometryTypeException e) {
+            throw e;
+        } catch (JsonProcessingException e) {
+            throw new GeoJsonFormatException("Invalid propertie JSON: " + e.getMessage());
+        } catch (DataAccessException e) {
+            throw new FeatureUpdateException("Database error while updating feature " + id + " in table " + layerName + ": " + e.getMessage());
+        }
+    }
+
+    public void deleteFeatureById(String tableName, int id) {
+        InputValidator.validateLayerName(tableName);
+        String sql = "DELETE FROM " + tableName + " WHERE id = ?";
+        try {
+            int affected = jdbcTemplate.update(sql, id);
+            if (affected == 0) {
+                throw new FeatureNotFoundException(id, tableName);
+            }
+        } catch (DataAccessException e) {
+           throw new FeatureUpdateException("Error deleting feature " + id + " from the layer " + tableName + ": " + e.getMessage());
+        }
+        
+    }
+
+    public void deleteAllFeatures(String tableName) {
+        InputValidator.validateLayerName(tableName);
+        try {
+            String sql = "DELETE FROM " + tableName;
+            jdbcTemplate.execute(sql);
+        } catch (Exception e) {
+            throw new FeatureUpdateException("Error deleting all features from table '" + tableName + "': " + e.getMessage());
+        }
+    }
+
+    public void createTable(String tableName) {
+        InputValidator.validateLayerName(tableName);
+
+        String createTableSQL = """
+            CREATE TABLE IF NOT EXISTS %s (
+                id SERIAL PRIMARY KEY,
+                geometry geometry(Geometry,4326),
+                properties TEXT
+            );
+            """.formatted(tableName);
+        try {
+            jdbcTemplate.execute(createTableSQL);
+        } catch (DataAccessException e) {
+            throw new FeatureUpdateException("Error creating table '" + tableName + "': " + e.getMessage());
+        }
+
+    }
+
+    public void deleteLayer(String workspace, String datastore, String layerName) {
+        InputValidator.validateWorkspace(workspace);
+        InputValidator.validateDatastore(datastore);
+        InputValidator.validateLayerName(layerName);
+
+        String layerUrl = geoServerUrl + "/rest/layers/" + workspace + ":" + layerName;
+        String featureTypeUrl = geoServerUrl + "/rest/workspaces/" + workspace + "/datastores/"+ datastore + "/featuretypes/"+ layerName;
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBasicAuth("admin","geoserver");  //capire come gestire le autorizzazioni
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+        
+        try {
+            restTemplate.exchange(layerUrl, HttpMethod.DELETE, request, String.class);
+            restTemplate.exchange(featureTypeUrl, HttpMethod.DELETE, request, String.class);
+        } catch (RestClientException e) {
+            throw new GeoServerRequestException("Error deleting layer or featureType from GeoServer: " + e.getMessage(), e);
+        }
+        String sql = "DROP TABLE IF EXISTS " + layerName + " CASCADE";
+
+        try {
+            jdbcTemplate.execute(sql);
+        } catch (DataAccessException e) {
+            throw new FeatureUpdateException("Error dropping table '" + layerName + "': " + e.getMessage());
+        }
+    }
 
 }
