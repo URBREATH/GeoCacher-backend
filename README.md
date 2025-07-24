@@ -28,8 +28,8 @@ Follow these steps to run the GeoCacher service locally.
 1.  **Clone the repository**
     Open a terminal and clone the repository to your computer.
     ```bash
-    git clone <YOUR_REPOSITORY_URL>
-    cd <REPOSITORY_FOLDER_NAME>
+    git clone https://github.com/URBREATH/GeoCacher-backend.git
+    cd GeoCacher-backend
     ```
 
 2.  **Build the Docker images**
