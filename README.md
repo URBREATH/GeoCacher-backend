@@ -57,12 +57,6 @@ Details of the registry where the built image of this tool is stored are as foll
 
 ***
 
-## License
-
-This project is licensed under the `INSERT_LICENSE_NAME` - see the [LICENSE](LICENSE) file for details.
-
-***
-
 ## External technical resources
 
 * **APIs**: Once running locally, the API documentation is available via Swagger UI at: [http://127.0.0.1:9090/swagger-ui/index.html](http://127.0.0.1:9090/swagger-ui/index.html)
