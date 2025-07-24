@@ -139,8 +139,6 @@ public class GeoServerController {
         return ResponseEntity.ok("Datastore deleted: " + datastoreName);
     }
 
-
-    
     
 }
 
