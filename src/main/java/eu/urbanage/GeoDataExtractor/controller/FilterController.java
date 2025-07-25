@@ -29,13 +29,13 @@ public class FilterController {
     @PostMapping("/")
     public ResponseEntity<FilterDetail> postFilter(@RequestBody String filterJson) {
 
-        LOGGER.info("Received filter request: " + filterJson);
+        //LOGGER.info("Received filter request: " + filterJson);
 
         try {
             // Converting the JSON string back to a Filter object
             ObjectMapper objectMapper = new ObjectMapper();
             Filter filter = objectMapper.readValue(filterJson, Filter.class);
-
+            
             return fsd.retriveFilterList(filter.getCityName());
 
         } catch (JsonProcessingException e) {

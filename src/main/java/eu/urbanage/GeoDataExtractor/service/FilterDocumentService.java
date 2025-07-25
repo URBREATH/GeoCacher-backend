@@ -90,6 +90,7 @@ public class FilterDocumentService {
         stringList.add("Santander");
         stringList.add("ghent-lez");
         stringList.add("leuven");
+        stringList.add("Cluj");
 
         System.out.println(stringList);
 

@@ -6,7 +6,7 @@ volumes:
 
 services:
   mongo:
-    image: mongo:5.0
+    image: mongo:4
     restart: always
     command: --nojournal
     ports:
@@ -18,7 +18,7 @@ services:
     links:
       - mongo
     ports:
-      - 1026:1026
+      - "1026:1026"
     command: -dbhost mongo
 
   geodata-be:
