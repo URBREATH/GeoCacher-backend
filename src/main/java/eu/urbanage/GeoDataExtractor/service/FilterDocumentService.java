@@ -85,12 +85,15 @@ public class FilterDocumentService {
 
     private List<String> getCityList() {
         List<String> stringList = new ArrayList<>();
-        stringList.add("Helsinki");
-        stringList.add("Flanders");
-        stringList.add("Santander");
-        stringList.add("ghent-lez");
-        stringList.add("leuven");
-        stringList.add("Cluj");
+        stringList.add("Aarhus");
+        stringList.add("Athens");
+        stringList.add("Cluj-Napoca");
+        stringList.add("Kajaani");
+        stringList.add("Leuven");
+        stringList.add("Madrid");
+        stringList.add("Parma");
+        stringList.add("Pilsen");
+        stringList.add("Tallinn");
 
         System.out.println(stringList);
 
