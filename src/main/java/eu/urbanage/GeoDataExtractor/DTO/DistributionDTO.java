@@ -16,11 +16,15 @@ public class DistributionDTO {
     @JsonProperty("downloadURL")
     private String downloadURL;
 
+    @JsonProperty("format")
+    private String format;
+
     public DistributionDTO(String id, String title, String description, String downloadURL) {
         this.id = id;
         this.title = title;
         this.description = description;
         this.downloadURL = downloadURL;
+        this.format = "geojson";
     }
 
     public String getId() {
