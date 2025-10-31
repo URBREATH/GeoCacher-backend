@@ -16,6 +16,9 @@ public class DatasetDTO {
     @JsonProperty("datasetDescription")
     private List<String> datasetDescription;
 
+    @JsonProperty("description")
+    private String description;
+
     @JsonProperty("datasetDistribution")
     private List<String> datasetDistribution;
 
@@ -31,7 +34,7 @@ public class DatasetDTO {
         distribdescrOBJ.add(description);
 
         this.datasetDescription = distribdescrOBJ;
-
+        this.description = description;
         this.datasetDistribution = distribIdOBJ;
 
     }
