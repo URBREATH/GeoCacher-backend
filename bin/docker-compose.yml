@@ -44,6 +44,9 @@ services:
       - POSTGRES_URL=jdbc:postgresql://postgis:5432/ProvaPostGIS
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
+      - KEYCLOAK_URL=http://keycloak:8080/auth # Per Keycloak 16 serve /auth
+      - KEYCLOAK_REALM=your-realm # Sostituisci con il tuo realm
+      - APP_CITIES=Aarhus,Athens,Cluj-Napoca,Kajaani,Leuven,Madrid,Parma,Pilsen,Tallinn
   geoserver:
     image: kartoza/geoserver:latest
     container_name: geoserver

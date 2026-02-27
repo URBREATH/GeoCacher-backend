@@ -43,7 +43,7 @@ public class GeojsonService implements GeojsonClient {
         List<String> GeoData = new ArrayList<String>();
 
         ResponseEntity<String> response;
-        // da sistemare il limit - offset
+        // TODO: handle limit - offset
 
         List<String> filter_list = data.getFilter();
         List<List<String>> sub_filter_list = data.getSubfilter();
@@ -103,7 +103,7 @@ public class GeojsonService implements GeojsonClient {
 
         String distanceType;
 
-        // da sistemare
+        // TODO: fix this
         MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
         headers.add("Accept", "application/geo+json");
 
@@ -112,7 +112,7 @@ public class GeojsonService implements GeojsonClient {
         List<String> GeoData = new ArrayList<String>();
 
         ResponseEntity<String> response;
-        // da sistemare il limit - offset
+        // TODO: handle limit - offset
 
         List<String> filter_list = data.getFilter();
         List<PointRadiusFeature> multiPoint = data.getMultipoint();

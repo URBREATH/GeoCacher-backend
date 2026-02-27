@@ -111,4 +111,8 @@ public class Cron {
     public void setFilter(List<String> filter) {
         this.filter = filter;
     }
+
+    public Object getCron_expression() {
+        throw new UnsupportedOperationException("Unimplemented method 'getCron_expression'");
+    }
 }

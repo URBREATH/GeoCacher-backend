@@ -56,7 +56,7 @@ public class OrionQueryBuilder {
     // &georel=intersects&coords=" + innerPolygon.getPolygonString() +
     // "&geometry=Polygon
     public OrionQueryBuilder addPolygonQuery(String polygonString) {
-        String appendQuery = "&georel=intersects&coords=" + polygonString + "&geometry=Polygon";
+        String appendQuery = "&georel=intersects&geometry=Polygon&coords=" + polygonString;
         urlBuilder.append(appendQuery);
         return this;
     }
@@ -69,6 +69,12 @@ public class OrionQueryBuilder {
 
     public OrionQueryBuilder addGeometryQuery() {
         String appendQuery = "&attrs=geometry";
+        urlBuilder.append(appendQuery);
+        return this;
+    }
+
+    public OrionQueryBuilder addQueryParam(String key, String value) {
+        String appendQuery = "&" + key + "=" + value;
         urlBuilder.append(appendQuery);
         return this;
     }

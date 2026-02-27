@@ -13,13 +13,6 @@ services:
       - 27027:27017
     volumes:
       - mongo:/data/db
-  orion:
-    image: fiware/orion-ld
-    links:
-      - mongo
-    ports:
-      - 1026:1026
-    command: -dbhost mongo
 
   geodata-be:
     image: geodata-be:main
@@ -28,33 +21,22 @@ services:
       context: .
     depends_on:
       - mongo
-      - geoserver
       - postgis
     restart: always
     ports:
       - '9090:9090'
     environment:
       - SERVER_PORT=9090
-      - SERVER_URL=http://localhost
-      - HOST_ORION=http://orion:1026
-      - HOST_NGSIBROKER=https://ngsi-broker.dev.ecosystem-urbanage.eu
+      - SERVER_URL=https://geocacher-api-dev.urbreath.tech
+      - HOST_ORION=https://orion-dev.urbreath.tech
+      - HOST_NGSIBROKER=https://ngsi-broker-dev.urbreath.tech
       - MONGODB_URL=mongodb://mongo
       - PLATFORM=dev #prod
-      - GEOSERVER_URL=http://geoserver:8080/geoserver  
+      - GEOSERVER_URL=http://geoserver-dev.urbreath.tech/geoserver
       - POSTGRES_URL=jdbc:postgresql://postgis:5432/ProvaPostGIS
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-  geoserver:
-    image: kartoza/geoserver:latest
-    container_name: geoserver
-    ports:
-      - "8080:8080"  # Usa una porta diversa per evitare conflitti con il backend
-    environment:
-      - GEOSERVER_ADMIN_USER=admin
-      - GEOSERVER_ADMIN_PASSWORD=geoserver
-      - GEOSERVER_DATA_DIR=/var/local/geoserver
-    volumes:
-      - geoserver_data:/var/local/geoserver
+      - APP_CITIES=Aarhus,Athens,Cluj-Napoca,Kajaani,Leuven,Madrid,Parma,Pilsen,Tallinn
 
   postgis:
     image: postgis/postgis:15-3.3

@@ -23,7 +23,7 @@ public class ParsingGeoJson {
                 }
                 return geometryFactory.createMultiPolygon(polygons);
             default:
-                throw new UnsupportedOperationException("Tipo non supportato: " + type);
+                throw new UnsupportedOperationException("Unsupported type: " + type);
         }
     }
 
@@ -39,4 +39,3 @@ public class ParsingGeoJson {
         return coords;
     }
 }
-

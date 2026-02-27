@@ -14,7 +14,7 @@ import java.util.Optional;
 @Service
 public class CronService {
 
-    private static final Logger log = LoggerFactory.getLogger(DocumentService.class);
+    private static final Logger log = LoggerFactory.getLogger(CronService.class);
 
     @Autowired
     protected CronRepository cRepo;
@@ -26,8 +26,8 @@ public class CronService {
             return cRepo.save(cronjob);
 
         } catch (Exception e) {
-            log.error("errore durante il salvataggio {} a causa di: {}", cronjob.getDocument_id(),
-                    e.getMessage());
+            log.error("Error while saving cron for document_id {}: {}", cronjob.getDocument_id(),
+                    e.getMessage(), e);
             return null;
         }
 
@@ -58,6 +58,7 @@ public class CronService {
             return ResponseEntity.noContent().build();
 
         } catch (Exception e) {
+            log.error("Error updating cron for document_id {}: {}", cron.getDocument_id(), e.getMessage(), e);
             return null;
         }
     }
@@ -80,6 +81,7 @@ public class CronService {
             return ResponseEntity.noContent().build();
 
         } catch (Exception e) {
+            log.error("Error updating cron after execution for document_id {}: {}", cron.getDocument_id(), e.getMessage(), e);
             return null;
         }
     }
@@ -96,7 +98,7 @@ public class CronService {
             return ResponseEntity.notFound().build();
 
         } catch (Exception e) {
-            log.error("errore durante il reperimento dei dati {} a causa di: {}", id, e.getMessage());
+            log.error("Error retrieving cron with id {}: {}", id, e.getMessage(), e);
             return null;
         }
     }
@@ -110,6 +112,7 @@ public class CronService {
             return ResponseEntity.noContent().build();
 
         } catch (Exception e) {
+            log.error("Error deleting cron with id {}: {}", id, e.getMessage(), e);
             return ResponseEntity.notFound().build();
         }
     }

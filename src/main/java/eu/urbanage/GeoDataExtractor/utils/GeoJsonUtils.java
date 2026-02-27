@@ -49,7 +49,7 @@ public class GeoJsonUtils {
                 mergedFeature.setFeatures(allFeatures);
                 return mergedFeature;
             } else {
-                System.out.println("Entrambi i GeoJSON devono essere di tipo 'FeatureCollection'.");
+                System.out.println("Both GeoJSONs must be of type 'FeatureCollection'.");
             }
         } catch (IOException e) {
             e.printStackTrace();

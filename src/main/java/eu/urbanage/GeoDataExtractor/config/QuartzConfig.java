@@ -25,9 +25,9 @@ public class QuartzConfig {
                 .forJob(userJobDetail())
                 .withIdentity("userJobTrigger")
                 .withSchedule(SimpleScheduleBuilder.simpleSchedule()
-                        .withMisfireHandlingInstructionNowWithExistingCount() // Esegui subito all'avvio
+                        .withMisfireHandlingInstructionNowWithExistingCount() // Execute immediately on startup
                         .withIntervalInMinutes(5)
-                        .repeatForever()) // Ogni 30 minuti dopo il primo avvio
+                        .repeatForever()) // Every 5 minutes after the first start
                 .build();
     }
 
@@ -45,9 +45,9 @@ public class QuartzConfig {
                 .forJob(filterJobDetail())
                 .withIdentity("filterJobTrigger")
                 .withSchedule(SimpleScheduleBuilder.simpleSchedule()
-                        .withMisfireHandlingInstructionNowWithExistingCount() // Esegui subito all'avvio
+                        .withMisfireHandlingInstructionNowWithExistingCount() // Execute immediately on startup
                         .withIntervalInMinutes(60)
-                        .repeatForever()) // Ogni 60 minuti dopo il primo avvio
+                        .repeatForever()) // Every 60 minutes after the first start
                 .build();
     }
 

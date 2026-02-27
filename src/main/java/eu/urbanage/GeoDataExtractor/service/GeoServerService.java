@@ -45,7 +45,7 @@ public class GeoServerService {
     
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_XML);
-        headers.setBasicAuth("admin", "geoserver"); // o usa configurazione
+        headers.setBasicAuth("admin", "geoserver"); // or use configuration
     
         HttpEntity<String> request = new HttpEntity<>(xmlPayload, headers);
         
@@ -106,7 +106,7 @@ public class GeoServerService {
             {
               "dataStore": {
                 "name": "%s",
-                "description": "Datastore PostGIS",
+                "description": "PostGIS Datastore",
                 "type": "PostGIS",
                 "enabled": true,
                 "connectionParameters": {
@@ -202,7 +202,7 @@ public class GeoServerService {
                     "/datastores/" + datastore + "/featuretypes.json";
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(MediaType.parseMediaTypes("application/json"));
-        headers.setBasicAuth("admin", "geoserver");   //capire come gestire le autorizzazioni
+        headers.setBasicAuth("admin", "geoserver");   // TODO: handle authorization
 
         HttpEntity<Void> request = new HttpEntity<>(headers);
 
@@ -240,7 +240,7 @@ public class GeoServerService {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_XML);
-        headers.setBasicAuth("admin", "geoserver");   //capire come gestire le autorizzazioni
+        headers.setBasicAuth("admin", "geoserver");   // TODO: handle authorization
 
         HttpEntity<String> request = new HttpEntity<>(payload, headers);
         try {
@@ -265,7 +265,7 @@ public class GeoServerService {
             throw new GeoJsonFormatException("Malformed GeoJSON: " + e.getMessage());
         }
         JsonNode features = root.get("features");
-        if (features == null || !features.isArray()) {  //OCCHIO QUA CONTROLLA SE VA BENE QUESTA CONDIZIONE
+        if (features == null || !features.isArray()) {  // check if this condition is correct
             throw new GeoJsonFormatException("Missing or invalid 'features' array in GeoJSON");
         }
             
@@ -289,7 +289,7 @@ public class GeoServerService {
                 String insertSQL = "INSERT INTO " + tableName + " (geometry, properties) VALUES (ST_GeomFromText(?, 4326), ?)";
                 jdbcTemplate.update(insertSQL, geom.toText(), properties);
             } catch (UnsupportedGeometryTypeException e) {
-            throw e; // già custom
+            throw e; // already custom
             } catch (JsonProcessingException e) {
                 throw new GeoJsonFormatException("Invalid properties format: " + e.getMessage());
             } catch (DataAccessException e) {
@@ -418,7 +418,7 @@ public class GeoServerService {
         String featureTypeUrl = geoServerUrl + "/rest/workspaces/" + workspace + "/datastores/"+ datastore + "/featuretypes/"+ layerName;
         
         HttpHeaders headers = new HttpHeaders();
-        headers.setBasicAuth("admin","geoserver");  //capire come gestire le autorizzazioni
+        headers.setBasicAuth("admin","geoserver");  // TODO: handle authorization
         HttpEntity<Void> request = new HttpEntity<>(headers);
         
         try {
