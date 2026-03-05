@@ -37,6 +37,11 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - APP_CITIES=Aarhus,Athens,Cluj-Napoca,Kajaani,Leuven,Madrid,Parma,Pilsen,Tallinn
+      - KEYCLOAK_URL=http://keycloak:8080/auth
+      - KEYCLOAK_REALM=my-realm
+      - KEYCLOAK_CLIENT_ID=my-client
+      - KEYCLOAK_CLIENT_SECRET=my-secret
+      - KEYCLOAK_REDIRECT_URI=http://localhost:4200/login
 
   postgis:
     image: postgis/postgis:15-3.3

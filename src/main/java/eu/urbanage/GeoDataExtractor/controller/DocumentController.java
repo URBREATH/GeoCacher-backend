@@ -1,6 +1,7 @@
 package eu.urbanage.GeoDataExtractor.controller;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import eu.urbanage.GeoDataExtractor.keycloak.connector.KeycloakConnector;
+import eu.urbanage.GeoDataExtractor.keycloak.model.KeycloakUser;
 import eu.urbanage.GeoDataExtractor.model.Document;
 import eu.urbanage.GeoDataExtractor.service.CronService;
 import eu.urbanage.GeoDataExtractor.service.DocumentService;
@@ -8,14 +9,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.Date;
 import java.util.List;
@@ -38,22 +33,19 @@ public class DocumentController {
     @Autowired
     private HttpServletRequest request;
 
-    @Value("${keycloak.url}")
-    private String keycloakUrl;
-
-    @Value("${keycloak.realm}")
-    private String realm;
+    @Autowired
+    private KeycloakConnector keycloakConnector;
 
     @PostMapping("/save/")
     public String postDocument(@RequestBody Document docJson) {
 
         LOGGER.info("Received document store: " + docJson.getName());
 
-        JsonNode userInfo = getUserInfoFromKeycloak(getAuthToken());
+        KeycloakUser userInfo = keycloakConnector.getUserFromToken(getAuthToken());
 
-        docJson.setUserID(String.valueOf(userInfo.get("sub")));
+        docJson.setUserID(userInfo.getSub());
 
-        docJson.setUserEmail(String.valueOf(userInfo.get("email")));
+        docJson.setUserEmail(userInfo.getEmail());
 
         docJson.setOnIDRA(false);
 
@@ -70,11 +62,11 @@ public class DocumentController {
 
         LOGGER.info("Received document update: " + docJson.getName());
 
-        JsonNode userInfo = getUserInfoFromKeycloak(getAuthToken());
+        KeycloakUser userInfo = keycloakConnector.getUserFromToken(getAuthToken());
 
-        docJson.setUserID(String.valueOf(userInfo.get("sub")));
+        docJson.setUserID(userInfo.getSub());
 
-        docJson.setUserEmail(String.valueOf(userInfo.get("email")));
+        docJson.setUserEmail(userInfo.getEmail());
 
         return ds.updateDocument(docJson);
 
@@ -99,9 +91,9 @@ public class DocumentController {
 
         try {
 
-            JsonNode userInfo = getUserInfoFromKeycloak(getAuthToken());
+            KeycloakUser userInfo = keycloakConnector.getUserFromToken(getAuthToken());
 
-            return ds.findAllDocumentOfUser(String.valueOf(userInfo.get("sub")));
+            return ds.findAllDocumentOfUser(userInfo.getSub());
 
         } catch (Exception e) {
             LOGGER.error(String.valueOf(e));
@@ -176,26 +168,6 @@ public class DocumentController {
 
         return request.getHeader("Authorization");
 
-    }
-
-    private JsonNode getUserInfoFromKeycloak(String token) {
-        RestTemplate restTemplate = new RestTemplate();
-        String url = keycloakUrl + "/realms/" + realm + "/protocol/openid-connect/userinfo";
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-        headers.set("Accept", "application/json");
-
-        if (token != null && !token.startsWith("Bearer ")) {
-            headers.set("Authorization", "Bearer " + token);
-        } else {
-            headers.set("Authorization", token);
-        }
-
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-
-        ResponseEntity<JsonNode> response = restTemplate.exchange(url, HttpMethod.GET, entity, JsonNode.class);
-        return response.getBody();
     }
 
 }
