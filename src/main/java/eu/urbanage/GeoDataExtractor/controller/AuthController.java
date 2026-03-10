@@ -8,9 +8,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
-@CrossOrigin(origins = { "https://geodata-extractor-ui.dev.ecosystem-urbanage.eu",
-        "https://geodata-extractor-ui.ecosystem-urbanage.eu", "https://gisviewer.santander.dev.ecosystem-urbanage.eu",
-        "https://gisviewer.santander.ecosystem-urbanage.eu", "http://localhost:4200", "https://geocacher-dev.urbreath.tech" })
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {

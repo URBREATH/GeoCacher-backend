@@ -9,9 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@CrossOrigin(origins = { "https://geodata-extractor-ui.dev.ecosystem-urbanage.eu",
-        "https://geodata-extractor-ui.ecosystem-urbanage.eu", "https://gisviewer.santander.dev.ecosystem-urbanage.eu",
-        "https://gisviewer.santander.ecosystem-urbanage.eu", "http://localhost:4200",  "https://geocacher-dev.urbreath.tech" })
 @RestController
 @RequestMapping("/api/idra/")
 public class IDRAController {
