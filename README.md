@@ -62,3 +62,10 @@ Details of the registry where the built image of this tool is stored are as foll
 * **APIs**: Once running locally, the API documentation is available via Swagger UI at: [http://127.0.0.1:9090/swagger-ui/index.html](http://127.0.0.1:9090/swagger-ui/index.html)
 * **Orion Context Broker**: Official documentation for the FIWARE Context Broker. [https://fiware-orion.readthedocs.io/](https://fiware-orion.readthedocs.io/)
 * **MongoDB**: Documentation for the NoSQL database used for search management. [https://docs.mongodb.com/](https://docs.mongodb.com/)
+
+##  Dependencies and Contacts
+|  |  |
+|--------|---------|
+| Dependencies | MongoDB, PostgreSQL, NGSI Broker, Orion, Geocacher frontend |
+| Contacts | giovanniluca.dacierno@eng.it, rita.gaeta@eng.it |
+| License | Proprietary |
