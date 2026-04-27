@@ -3,6 +3,8 @@ package eu.urbanage.GeoDataExtractor.utils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.urbanage.GeoDataExtractor.model.GeoJSONFeature;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -10,6 +12,8 @@ import java.util.Iterator;
 import java.util.List;
 
 public class GeoJsonUtils {
+
+    private static final Logger log = LoggerFactory.getLogger(GeoJsonUtils.class);
 
     public static Object mergeFeatureCollections(String geojsonString1, String geojsonString2) {
         try {
@@ -49,10 +53,10 @@ public class GeoJsonUtils {
                 mergedFeature.setFeatures(allFeatures);
                 return mergedFeature;
             } else {
-                System.out.println("Both GeoJSONs must be of type 'FeatureCollection'.");
+                log.warn("mergeFeatureCollections: both inputs must be JSON arrays (FeatureCollections)");
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Failed to merge GeoJSON feature collections", e);
         }
 
         return null;

@@ -23,7 +23,8 @@ public class FilterJob implements Job {
         try {
             fds.checkFilter();
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            LOGGER.error("FilterJob failed due to JSON processing error", e);
+            throw new JobExecutionException(e);
         }
         LOGGER.info("End Filter Cron Service");
     }

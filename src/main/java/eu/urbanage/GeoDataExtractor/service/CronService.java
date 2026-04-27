@@ -43,7 +43,12 @@ public class CronService {
 
         try {
 
-            Cron foundCron = cRepo.findByDocumentID(cron.getDocument_id()).get(0);
+            List<Cron> found = cRepo.findByDocumentID(cron.getDocument_id());
+            if (found.isEmpty()) {
+                log.warn("No cron found for document_id {} during update", cron.getDocument_id());
+                return ResponseEntity.notFound().build();
+            }
+            Cron foundCron = found.get(0);
 
             cRepo.deleteById(foundCron.getId());
 
@@ -67,7 +72,12 @@ public class CronService {
 
         try {
 
-            Cron foundCron = cRepo.findByDocumentID(cron.getDocument_id()).get(0);
+            List<Cron> found = cRepo.findByDocumentID(cron.getDocument_id());
+            if (found.isEmpty()) {
+                log.warn("No cron found for document_id {} during post-exec update", cron.getDocument_id());
+                return ResponseEntity.notFound().build();
+            }
+            Cron foundCron = found.get(0);
 
             cRepo.deleteById(foundCron.getId());
 

@@ -7,6 +7,7 @@ import eu.urbanage.GeoDataExtractor.service.DocumentService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,11 +26,16 @@ public class CronController {
     protected DocumentService ds;
 
     @PostMapping("/set/")
-    public String postCron(@RequestBody Cron cronJson) {
+    public ResponseEntity<String> postCron(@RequestBody Cron cronJson) {
 
         String document_id = cronJson.getDocument_id();
 
         Document ref_document = ds.findDocument(document_id).getBody();
+
+        if (ref_document == null) {
+            LOGGER.error("Document {} not found when creating cron", document_id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Document not found: " + document_id);
+        }
 
         cronJson.setCity(ref_document.getCityName());
 
@@ -39,13 +45,19 @@ public class CronController {
 
         cronJson.setData_last_execution(new Date());
 
-        String cron_id = cs.addCron(cronJson).getId();
+        Cron savedCron = cs.addCron(cronJson);
+
+        if (savedCron == null) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to save cron");
+        }
+
+        String cron_id = savedCron.getId();
 
         ref_document.setCron_id(cron_id);
 
         ds.updateDocumentFromCron(ref_document);
 
-        return cron_id;
+        return ResponseEntity.ok(cron_id);
 
     }
 
@@ -55,6 +67,11 @@ public class CronController {
         String document_id = cronJson.getDocument_id();
 
         Document ref_document = ds.findDocument(document_id).getBody();
+
+        if (ref_document == null) {
+            LOGGER.error("Document {} not found when updating cron", document_id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
 
         cronJson.setCity(ref_document.getCityName());
 
@@ -89,6 +106,11 @@ public class CronController {
 
             Document reletedDocument = ds.findDocumentObj(id);
 
+            if (reletedDocument == null) {
+                LOGGER.warn("Document {} not found when deleting cron", id);
+                return ResponseEntity.notFound().build();
+            }
+
             String cronID = reletedDocument.getCron_id();
 
             reletedDocument.setCron_id(null);
@@ -98,6 +120,7 @@ public class CronController {
             return cs.deleteCron(cronID);
 
         } catch (Exception e) {
+            LOGGER.error("Error deleting cron for document {}", id, e);
             return ResponseEntity.internalServerError().body(null);
         }
 

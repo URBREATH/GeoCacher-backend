@@ -51,6 +51,11 @@ public class UserJob implements Job {
 
             Document releated_document = ds.findDocumentObj(document_id);
 
+            if (releated_document == null) {
+                LOGGER.warn("Document {} not found for cron {}, skipping", document_id, selCron.getId());
+                continue;
+            }
+
             Date lastExecution = selCron.getData_last_execution();
 
             int scheduled = selCron.getRepeat();

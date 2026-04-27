@@ -3,6 +3,8 @@ package eu.urbanage.GeoDataExtractor.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import eu.urbanage.GeoDataExtractor.model.*;
 import eu.urbanage.GeoDataExtractor.utils.OrionQueryBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -18,6 +20,8 @@ import java.util.List;
 
 @Service
 public class GeojsonService implements GeojsonClient {
+
+    private static final Logger log = LoggerFactory.getLogger(GeojsonService.class);
 
     RestTemplate restTemplate = new RestTemplate();
 
@@ -75,7 +79,7 @@ public class GeojsonService implements GeojsonClient {
 
                         String url = oqb.addConcise().addPolygonQuery(innerPolygon.getPolygonString()).get();
 
-                        System.out.println(url);
+                        log.debug("Querying URL: {}", url);
 
                         response = restTemplate.exchange(url, HttpMethod.GET, requestEntity, String.class);
                         List<String> responseArr = Arrays.asList(response.getBody());

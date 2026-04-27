@@ -4,68 +4,109 @@
 
 ## Description
 
-**GeoCacher** is a backend service designed to support a graphical dashboard for visualizing geospatial data. Its primary purpose is to interface with a [FIWARE ORION Context Broker](https://fiware-orion.readthedocs.io/en/master/) to extract and temporarily store (cache) data.
+**GeoCacher** is a backend service designed to support a graphical dashboard for visualizing geospatial data. It interfaces with a [FIWARE ORION Context Broker](https://fiware-orion.readthedocs.io/en/master/) to extract and cache geospatial data, and integrates with [GeoServer](https://geoserver.org/) for publishing and serving map layers.
 
 Key features include:
-* **Data Extraction**: Retrieves filters and geospatial data from the ORION Context Broker.
-* **Search Management**: Supports CRUD (Create, Read, Update, Delete) operations to save and manage user searches on a supporting MongoDB database.
-* **GeoJSON Upload**: Allows users to upload and display custom GeoJSON files on the dashboard.
 
-***
+* **Data Extraction**: Retrieves filters and geospatial data from the ORION Context Broker using NGSI-LD queries (polygon, point-radius).
+* **Search Management**: CRUD operations for saving and managing user searches in MongoDB.
+* **GeoJSON Management**: Upload custom GeoJSON files, store features in PostGIS, and publish them as GeoServer layers.
+* **Scheduled Jobs**: Quartz-based scheduler that automatically refreshes cached geospatial data for each saved user search.
+* **IDRA Integration**: Publishes datasets and distributions to an NGSI Broker (IDRA).
+* **Authentication**: Keycloak OAuth2/OIDC integration for user identity and access management.
+
+---
+
+## Architecture
+
+```
+Frontend ──► GeoCacher Backend (Spring Boot, port 9090)
+                 │
+                 ├──► MongoDB          (document/search storage)
+                 ├──► PostgreSQL+PostGIS (geospatial feature storage)
+                 ├──► GeoServer         (map layer publishing)
+                 ├──► ORION Context Broker (NGSI-LD data source)
+                 ├──► NGSI Broker / IDRA  (dataset publishing)
+                 └──► Keycloak           (authentication)
+```
+
+---
 
 ## Installation Prerequisites
 
-To run this service, you must have the following installed on your system:
 * [Docker](https://docs.docker.com/get-docker/)
 * [Docker Compose](https://docs.docker.com/compose/install/)
 
-***
+---
 
 ## Installation Instructions
 
-Follow these steps to run the GeoCacher service locally.
+### 1. Clone the repository
 
-1.  **Clone the repository**
-    Open a terminal and clone the repository to your computer.
-    ```bash
-    git clone https://github.com/URBREATH/GeoCacher-backend.git
-    cd GeoCacher-backend
-    ```
+```bash
+git clone https://github.com/URBREATH/GeoCacher-backend.git
+cd GeoCacher-backend
+```
 
-2.  **Build the Docker images**
-    This command will build the service image and its supporting MongoDB database as defined in the `docker-compose.yml` file.
-    ```bash
-    docker-compose build
-    ```
+### 2. Configure environment variables
 
-3.  **Start the containers**
-    Run the containers in detached mode (in the background).
-    ```bash
-    docker-compose up -d
-    ```
-    The service will now be running.
+The `docker-compose.yml` already includes sensible defaults for a local development setup. For a production deployment, override the following variables:
 
-***
+| Variable | Description | Default |
+|---|---|---|
+| `SERVER_URL` | Public base URL of this service | `https://geocacher-api-dev.urbreath.tech` |
+| `HOST_ORION` | ORION Context Broker URL | `https://orion-dev.urbreath.tech` |
+| `HOST_NGSIBROKER` | NGSI Broker / IDRA URL | `https://ngsi-broker-dev.urbreath.tech` |
+| `MONGODB_URL` | MongoDB connection string | `mongodb://mongo` |
+| `GEOSERVER_URL` | GeoServer base URL | `http://geoserver-dev.urbreath.tech/geoserver` |
+| `GEOSERVER_ADMIN` | GeoServer admin username | `admin` |
+| `GEOSERVER_PASSWORD` | GeoServer admin password | `geoserver` |
+| `POSTGRES_URL` | PostGIS JDBC URL | `jdbc:postgresql://postgis:5432/ProvaPostGIS` |
+| `POSTGRES_USER` | PostGIS username | `postgres` |
+| `POSTGRES_PASSWORD` | PostGIS password | `postgres` |
+| `POSTGIS_HOST` | PostGIS hostname (for GeoServer datastore) | `postgis` |
+| `POSTGIS_PORT` | PostGIS port | `5432` |
+| `POSTGIS_DB` | PostGIS database name | `ProvaPostGIS` |
+| `KEYCLOAK_URL` | Keycloak auth server URL | `http://keycloak:8080/auth` |
+| `KEYCLOAK_REALM` | Keycloak realm name | `urbreath-auth` |
+| `KEYCLOAK_CLIENT_ID` | Keycloak client ID | `my-client` |
+| `KEYCLOAK_CLIENT_SECRET` | Keycloak client secret | `my-secret` |
+| `KEYCLOAK_REDIRECT_URI` | OAuth2 redirect URI after login | `http://localhost:4200/login` |
+| `APP_CITIES` | Comma-separated list of cities for filter discovery | `Aarhus,Athens,...` |
+
+### 3. Build and start
+
+```bash
+docker-compose build
+docker-compose up -d
+```
+
+The service starts on port `9090`. The stack includes MongoDB, PostGIS, and the backend itself (GeoServer must be provided externally).
+
+---
+
+## API Documentation
+
+Once running, the full API reference is available via Swagger UI:
+
+[http://127.0.0.1:9090/swagger-ui/index.html](http://127.0.0.1:9090/swagger-ui/index.html)
+
+---
 
 ## Built Image Registry
 
-Details of the registry where the built image of this tool is stored are as follows.
+| Field | Value |
+|---|---|
+| Registry URL | `registry.urbreath.tech` |
+| Image Name | `geocacher-be` |
+| Version | `0.0.1` |
 
-* **Registry URL**: `registry.urbreath.tech`
-* **Image Name**: `geocacher-be`
-* **Version**: `0.0.1`
+---
 
-***
+## External Resources
 
-## External technical resources
-
-* **APIs**: Once running locally, the API documentation is available via Swagger UI at: [http://127.0.0.1:9090/swagger-ui/index.html](http://127.0.0.1:9090/swagger-ui/index.html)
-* **Orion Context Broker**: Official documentation for the FIWARE Context Broker. [https://fiware-orion.readthedocs.io/](https://fiware-orion.readthedocs.io/)
-* **MongoDB**: Documentation for the NoSQL database used for search management. [https://docs.mongodb.com/](https://docs.mongodb.com/)
-
-##  Dependencies and Contacts
-|  |  |
-|--------|---------|
-| Dependencies | MongoDB, PostgreSQL, NGSI Broker, Orion, Geocacher frontend |
-| Contacts | giovanniluca.dacierno@eng.it, rita.gaeta@eng.it |
-| License | Proprietary |
+* [FIWARE ORION Context Broker](https://fiware-orion.readthedocs.io/) — NGSI-LD data source
+* [GeoServer](https://docs.geoserver.org/) — Map layer publishing
+* [MongoDB](https://docs.mongodb.com/) — Document storage
+* [PostGIS](https://postgis.net/documentation/) — Geospatial feature storage
+* [Keycloak](https://www.keycloak.org/documentation) — Authentication and authorization

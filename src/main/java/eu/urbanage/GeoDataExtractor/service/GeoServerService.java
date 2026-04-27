@@ -25,12 +25,33 @@ public class GeoServerService {
 
     @Value("${geoserver.url}")
     private String geoServerUrl;
+
+    @Value("${geoserver.username:admin}")
+    private String geoServerUsername;
+
+    @Value("${geoserver.password:geoserver}")
+    private String geoServerPassword;
+
+    @Value("${postgis.host:postgis}")
+    private String postgisHost;
+
+    @Value("${postgis.port:5432}")
+    private String postgisPort;
+
+    @Value("${postgis.database:ProvaPostGIS}")
+    private String postgisDatabase;
+
+    @Value("${spring.datasource.username:postgres}")
+    private String postgisUsername;
+
+    @Value("${spring.datasource.password:postgres}")
+    private String postgisPassword;
+
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-
-
-    RestTemplate restTemplate=new RestTemplate();
+    @Autowired
+    private RestTemplate restTemplate;
 
 
     public void createWorkspace(String workspace) {
@@ -45,7 +66,7 @@ public class GeoServerService {
     
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_XML);
-        headers.setBasicAuth("admin", "geoserver"); // or use configuration
+        headers.setBasicAuth(geoServerUsername, geoServerPassword);
     
         HttpEntity<String> request = new HttpEntity<>(xmlPayload, headers);
         
@@ -65,7 +86,7 @@ public class GeoServerService {
 
     public String getWorkspaces() {
         HttpHeaders headers = new HttpHeaders();
-        headers.setBasicAuth("admin", "geoserver");        
+        headers.setBasicAuth(geoServerUsername, geoServerPassword);
         
         HttpEntity<String> entity = new HttpEntity<>(headers);
         
@@ -87,7 +108,7 @@ public class GeoServerService {
         InputValidator.validateWorkspace(workspace);
         String url = geoServerUrl + "/rest/workspaces/" + workspace + "?recurse=true";
         HttpHeaders headers = new HttpHeaders();
-        headers.setBasicAuth("admin", "geoserver");
+        headers.setBasicAuth(geoServerUsername, geoServerPassword);
         HttpEntity<Void> request = new HttpEntity<>(headers);
         try {
         restTemplate.exchange(url, HttpMethod.DELETE, request, String.class);
@@ -110,11 +131,11 @@ public class GeoServerService {
                 "type": "PostGIS",
                 "enabled": true,
                 "connectionParameters": {
-                  "host": "postgis",
-                  "port": "5432",
-                  "database": "ProvaPostGIS",
-                  "user": "postgres",
-                  "passwd": "postgres",
+                  "host": "%s",
+                  "port": "%s",
+                  "database": "%s",
+                  "user": "%s",
+                  "passwd": "%s",
                   "dbtype": "postgis",
                   "schema": "public",
                   "Expose primary keys": "true",
@@ -126,11 +147,11 @@ public class GeoServerService {
                 }
               }
             }
-            """.formatted(datastore);
+            """.formatted(datastore, postgisHost, postgisPort, postgisDatabase, postgisUsername, postgisPassword);
     
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBasicAuth("admin", "geoserver");
+        headers.setBasicAuth(geoServerUsername, geoServerPassword);
     
         HttpEntity<String> request = new HttpEntity<>(payload, headers);
         try{
@@ -146,7 +167,7 @@ public class GeoServerService {
     public String getDatastores(String workspace) {
         InputValidator.validateWorkspace(workspace);
         HttpHeaders headers = new HttpHeaders();
-        headers.setBasicAuth("admin", "geoserver");        
+        headers.setBasicAuth(geoServerUsername, geoServerPassword);
         
         HttpEntity<String> entity = new HttpEntity<>(headers);
 
@@ -166,7 +187,7 @@ public class GeoServerService {
         InputValidator.validateDatastore(datastore);
         String url = geoServerUrl + "/rest/workspaces/" + workspace + "/datastores/" + datastore + "?recurse=true";
         HttpHeaders headers = new HttpHeaders();
-        headers.setBasicAuth("admin", "geoserver");
+        headers.setBasicAuth(geoServerUsername, geoServerPassword);
         try {
             HttpEntity<Void> request = new HttpEntity<>(headers);
             restTemplate.exchange(url, HttpMethod.DELETE, request, String.class);
@@ -202,7 +223,7 @@ public class GeoServerService {
                     "/datastores/" + datastore + "/featuretypes.json";
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(MediaType.parseMediaTypes("application/json"));
-        headers.setBasicAuth("admin", "geoserver");   // TODO: handle authorization
+        headers.setBasicAuth(geoServerUsername, geoServerPassword);
 
         HttpEntity<Void> request = new HttpEntity<>(headers);
 
@@ -240,12 +261,12 @@ public class GeoServerService {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_XML);
-        headers.setBasicAuth("admin", "geoserver");   // TODO: handle authorization
+        headers.setBasicAuth(geoServerUsername, geoServerPassword);
 
         HttpEntity<String> request = new HttpEntity<>(payload, headers);
         try {
-            ResponseEntity<String> response = new RestTemplate().postForEntity(url, request, String.class);
-        
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+
             if (!response.getStatusCode().is2xxSuccessful()) {
                 throw new LayerNotPublishedException(layerName + ": " + response.getBody());
             }
@@ -311,7 +332,7 @@ public class GeoServerService {
                     .setCount(1)
                     .build();
         HttpHeaders headers = new HttpHeaders();
-        headers.setBasicAuth("admin", "geoserver");
+        headers.setBasicAuth(geoServerUsername, geoServerPassword);
         headers.setAccept(MediaType.parseMediaTypes("application/json"));
 
         try {
@@ -418,7 +439,7 @@ public class GeoServerService {
         String featureTypeUrl = geoServerUrl + "/rest/workspaces/" + workspace + "/datastores/"+ datastore + "/featuretypes/"+ layerName;
         
         HttpHeaders headers = new HttpHeaders();
-        headers.setBasicAuth("admin","geoserver");  // TODO: handle authorization
+        headers.setBasicAuth(geoServerUsername, geoServerPassword);
         HttpEntity<Void> request = new HttpEntity<>(headers);
         
         try {

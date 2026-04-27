@@ -93,7 +93,7 @@ public class DocumentController {
             return ds.findAllDocumentOfUser(userInfo.getSub());
 
         } catch (Exception e) {
-            LOGGER.error(String.valueOf(e));
+            LOGGER.error("Unexpected error", e);
 
             return ResponseEntity.internalServerError().body(null);
 
@@ -109,7 +109,7 @@ public class DocumentController {
             return ds.findAllDocumentByCity(city);
 
         } catch (Exception e) {
-            LOGGER.error(String.valueOf(e));
+            LOGGER.error("Unexpected error", e);
             return ResponseEntity.internalServerError().body(null);
         }
 
@@ -123,7 +123,7 @@ public class DocumentController {
             return ds.findDocumentGeojson(id);
 
         } catch (Exception e) {
-            LOGGER.error(String.valueOf(e));
+            LOGGER.error("Unexpected error", e);
             return ResponseEntity.internalServerError().body(null);
         }
 
@@ -137,7 +137,7 @@ public class DocumentController {
             return ds.findAllDocument();
 
         } catch (Exception e) {
-            LOGGER.error(String.valueOf(e));
+            LOGGER.error("Unexpected error", e);
             return ResponseEntity.internalServerError().body(null);
         }
 
@@ -150,12 +150,18 @@ public class DocumentController {
 
             Document releated_document = ds.findDocumentObj(id);
 
-            cs.deleteCron(releated_document.getCron_id());
+            if (releated_document == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            if (releated_document.getCron_id() != null) {
+                cs.deleteCron(releated_document.getCron_id());
+            }
 
             return ds.deleteDocument(id);
 
         } catch (Exception e) {
-            LOGGER.error(id, e);
+            LOGGER.error("Error deleting document {}", id, e);
             return ResponseEntity.internalServerError().body(null);
         }
 
